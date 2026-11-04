@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { assertExplicaiVersion } from "./compat.js";
 import { parseArgs } from "./config.js";
 import { createServer } from "./server.js";
 
 try {
+  assertExplicaiVersion();
   const cfg = parseArgs(process.argv.slice(2), process.cwd());
   await createServer(cfg).connect(new StdioServerTransport());
   // stdout é o canal do protocolo: o aviso vai para stderr.
