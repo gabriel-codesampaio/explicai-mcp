@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { listVersions, readPage, readPageTree } from "explicai/core";
+import { listVersions, readPage, readPageTree, updatePage } from "explicai/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Config, Level } from "../src/config.js";
 import { createServer } from "../src/server.js";
@@ -151,6 +151,29 @@ describe("update_page", () => {
     expect((await upd.call("update_page", { manual, pageId: p.id, rev: r.rev, body: "x" })).error).toBe(false);
   });
 
+  it("update: corpo alterado em página aprovada ou publicada volta para revisao e avisa", async () => {
+    const { call } = await connect({}, "update");
+    const manual = (await call("create_manual", { title: "M" })).json.slug;
+    const dir = path.join(ws, manual);
+    for (const status of ["aprovado", "publicado"] as const) {
+      const p = (await call("add_page", { manual, title: status, body: "um" })).json;
+      const rev = (await updatePage(dir, p.id, { status })).rev;
+      const r = await call("update_page", { manual, pageId: p.id, rev, body: "dois" });
+      expect(r.error).toBe(false);
+      expect(r.json.warnings.join(" ")).toMatch(/revisao/);
+      expect((await readPage(dir, p.id)).status).toBe("revisao");
+    }
+  });
+
+  it("rev velho não deixa versão 'Antes do agente' para trás", async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug;
+    const p = (await call("add_page", { manual, title: "P", body: "um" })).json;
+    await call("update_page", { manual, pageId: p.id, rev: p.rev, title: "Q" });
+    expect((await call("update_page", { manual, pageId: p.id, rev: p.rev, body: "dois" })).error).toBe(true);
+    expect(await listVersions(path.join(ws, manual), p.id)).toHaveLength(0);
+  });
+
   it("avisa quando o corpo parece ter token", async () => {
     const { call } = await connect();
     const manual = (await call("create_manual", { title: "M" })).json.slug;
@@ -175,7 +198,7 @@ describe("add_image", () => {
     expect(r.text).not.toContain(outside);
   });
 
-  it("recusa link simbólico que aponta para fora", async () => {
+  it("recusa link simbólico que aponta para fora", async (ctx) => {
     const { call, manual } = await setup();
     const target = path.join(outside, "y.png");
     await writeFile(target, png());
@@ -183,7 +206,7 @@ describe("add_image", () => {
     try {
       await symlink(target, link);
     } catch {
-      return; // sem permissão para criar link no Windows comum
+      return ctx.skip(); // sem permissão para criar link no Windows comum
     }
     expect((await call("add_image", { manual, source: { path: link } })).error).toBe(true);
   });
@@ -217,6 +240,35 @@ describe("annotate_image", () => {
       hotspots: [{ x: 0, y: 0, w: 0.5, h: 0.5, target: { type: "page", pageId: "nao-existe" } }],
     });
     expect(r.error).toBe(true);
+  });
+});
+
+describe("annotate_image e páginas fora de rascunho", () => {
+  async function setup(level: Level) {
+    const c = await connect({}, level);
+    const manual = (await c.call("create_manual", { title: "M" })).json.slug as string;
+    const img = (await c.call("add_image", { manual, source: { base64: png().toString("base64"), name: "b.png" } })).json;
+    const p = (await c.call("add_page", { manual, title: "P", body: img.markdown })).json;
+    return { ...c, manual, img, p, dir: path.join(ws, manual) };
+  }
+
+  it("draft recusa imagem citada por página em revisao e diz como resolver; update aceita", async () => {
+    const { call, manual, img, p, dir } = await setup("draft");
+    const marker = { manual, asset: img.asset, markers: [{ x: 0.1, y: 0.1 }] };
+    expect((await call("annotate_image", marker)).error).toBe(false);
+    await updatePage(dir, p.id, { status: "revisao" });
+    const r = await call("annotate_image", marker);
+    expect(r.error).toBe(true);
+    expect(r.text).toMatch(/--level update/);
+    expect((await (await connect({}, "update")).call("annotate_image", marker)).error).toBe(false);
+  });
+
+  it("recusa arquivo de assets/ que não é imagem", async () => {
+    const { call, manual, dir } = await setup("draft");
+    await writeFile(path.join(dir, "assets", "notas.txt"), png());
+    const r = await call("annotate_image", { manual, asset: "assets/notas.txt", markers: [{ x: 0.1, y: 0.1 }] });
+    expect(r.error).toBe(true);
+    expect(r.text).toMatch(/PNG, JPG, GIF ou WebP/);
   });
 });
 
