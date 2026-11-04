@@ -77,4 +77,6 @@ npm install
 npm run check   # biome, tsc e vitest
 ```
 
+Para contribuir, veja o [guia](https://github.com/gabriel-codesampaio/explicai-studio/blob/main/CONTRIBUTING.md) e o [código de conduta](https://github.com/gabriel-codesampaio/explicai-studio/blob/main/CODE_OF_CONDUCT.md). Falha de segurança: gabriel@codesampa.io.
+
 Licença MIT.
