@@ -1,6 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import { readManual, resolveInside } from "explicai/core";
+import { readManual, resolveInsideReal } from "explicai/core";
 import type { Config } from "./config.js";
 import { UserError } from "./errors.js";
 
@@ -14,13 +14,14 @@ export async function manualDir(cfg: Config, slug: string): Promise<string> {
   if (cfg.manuals.length > 0 && !cfg.manuals.includes(slug)) {
     throw new UserError(`O manual "${slug}" não está liberado neste servidor. Use list_manuals.`);
   }
-  const dir = resolveInside(cfg.workspace, slug);
   try {
+    // Real: um link dentro do workspace que aponta para fora não vale.
+    const dir = await resolveInsideReal(cfg.workspace, slug);
     await readManual(dir);
+    return dir;
   } catch {
     throw new UserError(`Manual "${slug}" não encontrado. Use list_manuals.`);
   }
-  return dir;
 }
 
 export const slugOf = (dir: string) => path.basename(dir);

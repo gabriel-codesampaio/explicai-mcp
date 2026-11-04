@@ -53,6 +53,8 @@ Também há os resources `explicai://format` e `explicai://writing-guide`, e os 
 
 `add_image` lê arquivos só do workspace, da pasta onde o servidor abriu e das pastas de `--allow-dir`. Links simbólicos que saem delas são recusados, e as mensagens de erro não mostram caminho absoluto. `add_page` e `update_page` avisam, sem bloquear, quando o corpo parece conter chave ou token.
 
+Atenção: `--allow-dir` e a pasta onde o servidor abre entram na lista de leitura de `add_image`. Se você abrir o servidor na sua home, o agente pode importar qualquer imagem de toda a home. Abra numa pasta de projeto ou use `--allow-dir` com pastas específicas.
+
 ## Limite
 
 `--level` e `--manual` evitam engano, não são barreira de segurança. Um agente que tem Read, Write e Bash próprios lê e grava qualquer arquivo do disco sem passar por este servidor. Isolamento de verdade vem das permissões do próprio cliente.

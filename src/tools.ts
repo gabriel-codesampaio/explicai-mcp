@@ -198,18 +198,30 @@ export function registerTools(server: McpServer, cfg: Config): void {
       if (page.rev !== rev) {
         throw new UserError("A página mudou desde a última leitura. Chame read_page de novo e refaça a edição com o rev novo.");
       }
-      if (body !== undefined && body !== page.body) await saveVersion(dir, pageId, "Antes do agente");
+      const changed = body !== undefined && body !== page.body;
+      // Texto novo numa página que a pessoa já aprovou ou publicou precisa de nova revisão dela.
+      const reopen = changed && status === undefined && (page.status === "aprovado" || page.status === "publicado");
       const next = await updatePage(
         dir,
         pageId,
         {
           ...(title === undefined ? {} : { title }),
           ...(body === undefined ? {} : { body }),
-          ...(status === undefined ? {} : { status }),
+          ...(status === undefined ? (reopen ? { status: "revisao" as const } : {}) : { status }),
         },
-        { ifRev: rev },
+        {
+          ifRev: rev,
+          // A versão só é guardada depois de o rev passar, dentro da fila da pasta.
+          ...(changed && { beforeWrite: async () => void (await saveVersion(dir, pageId, "Antes do agente")) }),
+        },
       );
-      return { id: next.id, rev: next.rev, warnings: secretWarning(body) };
+      const warnings = secretWarning(body);
+      if (reopen) {
+        warnings.push(
+          `A página estava "${page.status}" e voltou para revisao porque o texto mudou. Peça à pessoa para aprovar de novo no Studio.`,
+        );
+      }
+      return { id: next.id, rev: next.rev, warnings };
     },
   );
 
@@ -256,9 +268,11 @@ export function registerTools(server: McpServer, cfg: Config): void {
     async ({ manual, asset, space, markers, highlights, arrows, hotspots }) => {
       const dir = await manualDir(cfg, manual);
       if (!ASSET.test(asset)) throw new UserError("asset deve ser assets/<arquivo>, como devolvido por add_image.");
+      if (!/\.(png|jpe?g|gif|webp)$/i.test(asset)) throw new UserError("Só imagens PNG, JPG, GIF ou WebP têm marcações.");
       const size = await imageSize(path.join(dir, asset)).catch(() => null);
       if (!size) throw new UserError(`Imagem ${asset} não encontrada. Importe com add_image primeiro.`);
       const ids = new Set(flatten((await readManual(dir)).pages).map((n) => n.id));
+      if (cfg.level === "draft") await assertOnlyDraftPagesUse(dir, asset, [...ids]);
       for (const h of hotspots ?? []) {
         if (h.target.type !== "url" && !ids.has(h.target.pageId)) {
           throw new UserError(`O hotspot aponta para a página "${h.target.pageId}", que não existe. Veja os ids em get_manual.`);
@@ -304,3 +318,16 @@ const decode = (t: string) => {
   }
 };
 const round = (n: number) => Math.round(n * 1e6) / 1e6;
+
+/** No nível draft, marcar uma imagem que página em revisão, aprovada ou publicada usa mudaria o que a pessoa já revisou. */
+async function assertOnlyDraftPagesUse(dir: string, asset: string, pageIds: string[]): Promise<void> {
+  for (const id of pageIds) {
+    const page = await readPage(dir, id).catch(() => null);
+    if (!page || page.status === "rascunho") continue;
+    if ([...page.body.matchAll(MENTION)].some((m) => decode(`assets/${m[1]}`) === asset)) {
+      throw new UserError(
+        `A imagem ${asset} aparece na página "${page.title}", que está em "${page.status}". No nível draft só se marca imagem usada por rascunho; reinicie o servidor com --level update ou peça à pessoa para marcar no Studio.`,
+      );
+    }
+  }
+}
