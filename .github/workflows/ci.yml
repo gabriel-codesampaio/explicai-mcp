@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, tipos e testes (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      # O MCP depende de `explicai` >=0.3.0 (peerDependency), que ainda não está no npm.
+      # Enquanto isso, o CI empacota o core do Studio (main) e instala o tarball no lugar do npm.
+      # Quando a 0.3.0 estiver publicada, apague este bloco e use `npm install`.
+      - name: Core do Studio (explicai) a partir da main
+        uses: actions/checkout@v7
+        with:
+          repository: gabriel-codesampaio/explicai-studio
+          ref: main
+          path: .studio
+      - name: Empacota o core do Studio
+        working-directory: .studio
+        run: |
+          npm ci --ignore-scripts
+          npx tsc -p tsconfig.build.json
+          npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+      - name: Instala as dependências com o tarball do explicai
+        run: npm install --no-package-lock --no-save --no-audit --no-fund "$RUNNER_TEMP"/explicai-*.tgz
+
+      - run: npm run lint
+      - run: npm run typecheck
+      # O teste de stdio sobe o dist/cli.js, então o build vem antes dos testes.
+      - run: npm run build
+      - run: npm test

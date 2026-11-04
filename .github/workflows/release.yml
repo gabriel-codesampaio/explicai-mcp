@@ -1,0 +1,55 @@
+name: Release
+
+# Publica no npm e cria a release no GitHub quando uma tag vX.Y.Z é enviada.
+# Pré-requisito: o `explicai` >=0.3.0 já estar no npm (peerDependency).
+# Usa o segredo NPM_TOKEN (token Automation do npmjs.com) em Settings > Secrets > Actions.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write # criar a release
+  id-token: write # provenance no npm
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publicar ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Tag igual à versão do package.json
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::A tag $GITHUB_REF_NAME não bate com a versão $v do package.json"
+            exit 1
+          fi
+
+      # Sem package-lock.json no repo (está no .gitignore), por isso `npm install`.
+      - run: npm install --no-audit --no-fund
+      # prepublishOnly roda lint, tipos, build e testes antes de publicar.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release no GitHub com o trecho do CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v ver="$ver" '
+            index($0, "## [" ver "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notas.md
+          [ -s notas.md ] || echo "Veja o CHANGELOG.md." > notas.md
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notas.md --verify-tag
