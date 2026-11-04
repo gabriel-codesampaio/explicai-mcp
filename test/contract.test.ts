@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { listVersions, readPage, readPageTree, updatePage } from "explicai/core";
+import { listVersions, readAnnotations, readPage, readPageTree, updatePage } from "explicai/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Config, Level } from "../src/config.js";
 import { createServer } from "../src/server.js";
@@ -49,7 +49,7 @@ describe("níveis", () => {
     expect(await names("read")).toEqual(["check_manual", "get_manual", "list_manuals", "read_page"]);
     const draft = await names("draft");
     expect(draft).toContain("create_manual");
-    expect(draft).toHaveLength(11);
+    expect(draft).toHaveLength(12);
     expect(draft).toContain("redact_image");
     expect(draft.some((n) => /delete|remove|approve|publish/.test(n))).toBe(false);
   });
@@ -102,11 +102,11 @@ describe("fluxo completo com o Studio fechado", () => {
       ],
       hotspots: [{ x: 0, y: 0, w: 100, h: 50, target: { type: "page", pageId: c.id } }],
     });
-    expect(ann.json.markers.map((m: { n: number; x: number; y: number }) => [m.n, m.x, m.y])).toEqual([
+    expect(ann.json).toMatchObject({ asset: img.asset, markers: 2, hotspots: 1 });
+    expect((await readAnnotations(path.join(ws, manual), img.asset)).markers.map((m) => [m.n, m.x, m.y])).toEqual([
       [1, 0.5, 0.5],
       [2, 0.1, 0.1],
     ]);
-    expect(ann.json.hotspots[0]).toMatchObject({ x: 0, y: 0, w: 0.5, h: 0.5 });
 
     await call("update_page", { manual, pageId: b.id, rev: b.rev, body: `1. Clique.\n\n${img.markdown}` });
 

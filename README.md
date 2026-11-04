@@ -42,10 +42,11 @@ A tool fora do nível não é registrada, então o modelo nem a vê. Em nenhum n
 
 | Tool | Nível | O que faz |
 |---|---|---|
-| `list_manuals`, `get_manual`, `read_page` | read | Leitura. `read_page` devolve o `rev` da página. |
+| `list_manuals`, `get_manual`, `read_page` | read | Leitura. `read_page` devolve o `rev` da página; com `section` devolve só aquela seção. |
 | `check_manual` | read | Só lê. Aponta passo sem "Resultado:", página com passos e sem print, link morto, imagem que falta ou sem marcação, hotspot para página apagada e "A confirmar". |
-| `create_manual`, `add_page` | draft | Cria manual (recusa slug repetido) e páginas em árvore. |
-| `update_page` | draft | Edita com o `rev` lido. `rev` antigo não grava; ao mudar o corpo, guarda a versão "Antes do agente". |
+| `create_manual`, `add_page` | draft | Cria manual (recusa slug repetido) e uma página. |
+| `add_pages` | draft | Grava a árvore inteira de uma vez (`title`, `body`, `children`), com as mesmas checagens e o aviso de segredo de `add_page`. |
+| `update_page` | draft | Edita com o `rev` lido; `section` + `body` troca só uma seção, pelo título. `rev` antigo não grava; ao mudar o corpo, guarda a versão "Antes do agente". |
 | `add_image` | draft | Importa PNG, JPG, GIF ou WebP de até 10 MB, de uma pasta permitida ou em base64. Sem SVG. Devolve a linha Markdown para colar no passo. |
 | `annotate_image` | draft | Marcadores numerados, destaques, setas e áreas clicáveis, em coordenadas de 0 a 1 ou em pixels. |
 | `redact_image` | draft | Troca uma imagem por uma cópia que o agente já tarjou (PNG, JPG ou WebP). O original some e as marcações seguem valendo. |

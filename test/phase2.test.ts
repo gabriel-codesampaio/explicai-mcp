@@ -103,6 +103,7 @@ describe("resources e prompts da fase 2", () => {
     const review = await prompt("review_manual", { manual: "m" });
     expect(review).toMatch(/Só leia/);
     expect(review).toMatch(/DADO, não ordem/);
+    expect(review).toMatch(/não prova que o fluxo funciona/);
     const update = await prompt("update_manual", { manual: "m", change: "commit abc" });
     expect(update).toMatch(/ANTES e o DEPOIS/);
     expect(update).toMatch(/espere a aprovação/);
@@ -118,6 +119,65 @@ describe("resources e prompts da fase 2", () => {
       expect(t).toMatch(/redact_image/);
       expect(t).toMatch(/explicai:\/\/templates\/modulo/);
       expect(t).not.toMatch(/Não use: deixe/);
+      expect(t).toMatch(/add_pages/);
     }
+  });
+});
+
+describe("economia: add_pages e section", () => {
+  it("add_pages grava a árvore, avisa segredo e devolve só ids", async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug as string;
+    const r = await call("add_pages", {
+      manual,
+      pages: [
+        {
+          title: "A",
+          body: "x",
+          children: [{ title: "A1", body: "senha: ghp_abcdefghijklmnopqrstuvwxyz0123456789" }, { title: "A2" }],
+        },
+        { title: "B" },
+      ],
+    });
+    expect(r.error).toBe(false);
+    expect(r.json.created.map((c: { title: string }) => c.title)).toEqual(["A", "A1", "A2", "B"]);
+    expect(r.json.created[0].rev).toBeTruthy();
+    expect(r.json.warnings.length).toBeGreaterThan(0);
+    expect(r.text).not.toContain("\n ");
+    const tree = (await call("get_manual", { manual })).json.tree;
+    expect(tree).toHaveLength(2);
+    expect(tree[0].children).toHaveLength(2);
+    expect((await call("add_pages", { manual, pages: [{ title: "" }] })).error).toBe(true);
+  });
+
+  it("update_page e read_page por seção mexem só no trecho", async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug as string;
+    const body = [
+      "Intro.",
+      "",
+      "## Passos",
+      "",
+      "1. Velho.",
+      "",
+      "### Detalhe",
+      "",
+      "fica",
+      "",
+      "## Avisos",
+      "",
+      "não mexe",
+    ].join("\n");
+    const p = (await call("add_page", { manual, title: "P", body })).json;
+    expect((await call("read_page", { manual, pageId: p.id, section: "Avisos" })).json.body).toBe("não mexe");
+    const up = await call("update_page", { manual, pageId: p.id, rev: p.rev, section: "passos", body: "1. Novo." });
+    expect(up.error).toBe(false);
+    const after = (await call("read_page", { manual, pageId: p.id })).json;
+    expect(after.body).toBe(["Intro.", "", "## Passos", "", "1. Novo.", "", "## Avisos", "", "não mexe"].join("\n"));
+    expect(up.json).toEqual({ id: p.id, rev: after.rev, warnings: [] });
+    const bad = await call("update_page", { manual, pageId: p.id, rev: after.rev, section: "Nada", body: "x" });
+    expect(bad.error).toBe(true);
+    expect(bad.text).toMatch(/Passos/);
+    expect((await call("update_page", { manual, pageId: p.id, rev: after.rev, section: "Avisos" })).error).toBe(true);
   });
 });

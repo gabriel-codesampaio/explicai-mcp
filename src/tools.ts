@@ -26,6 +26,7 @@ import { z } from "zod";
 import { type Config, LEVELS, type Level } from "./config.js";
 import { safe, UserError } from "./errors.js";
 import { loadImage, manualDir, secretWarning, slugOf } from "./guards.js";
+import { readSection, replaceSection } from "./sections.js";
 
 const RO = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
@@ -40,6 +41,12 @@ const target = z.union([
 
 const ASSET = /^assets\/[^/\\]+$/;
 const MENTION = /assets\/([^)\s"'#?]+)/g;
+
+interface PageInput {
+  title: string;
+  body?: string | undefined;
+  children?: PageInput[] | undefined;
+}
 
 const stripTree = (nodes: PageTreeNode[]): unknown[] =>
   nodes.map((n) => ({
@@ -85,8 +92,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "get_manual",
     "read",
     {
-      description:
-        "Get a manual's title, language, theme and page tree (id, title, status). Call this before writing to an existing manual.",
+      description: "Manual title, language, theme and page tree (id, title, status). Call before writing to an existing manual.",
       inputSchema: { manual },
       annotations: RO,
     },
@@ -102,18 +108,19 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "read",
     {
       description:
-        "Read a page: body (Markdown), status, rev (needed by update_page) and the images it uses with their annotations.",
-      inputSchema: { manual, pageId: z.string() },
+        "Read a page: body (Markdown), status, rev (needed by update_page) and its images with annotations. section (heading title) returns only that section's text.",
+      inputSchema: { manual, pageId: z.string(), section: z.string().optional() },
       annotations: RO,
     },
-    async ({ manual, pageId }) => {
+    async ({ manual, pageId, section }) => {
       const dir = await manualDir(cfg, manual);
       const p = await readPage(dir, pageId);
+      const text = section === undefined ? p.body : readSection(p.body, section);
       const assets = [...new Set([...p.body.matchAll(MENTION)].map((m) => decode(`assets/${m[1]}`)))];
       const images = await Promise.all(
         assets.filter((a) => ASSET.test(a)).map(async (asset) => ({ asset, annotations: await readAnnotations(dir, asset) })),
       );
-      return { id: p.id, title: p.title, status: p.status, body: p.body, rev: p.rev, images };
+      return { id: p.id, title: p.title, status: p.status, body: text, rev: p.rev, images };
     },
   );
 
@@ -122,8 +129,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
       "create_manual",
       "draft",
       {
-        description:
-          "Create a new, empty manual. Refuses if a manual with the same slug exists (use get_manual instead). Write the manual's text in the language you set here.",
+        description: "Create an empty manual. Refuses an existing slug. Write the text in the language set here.",
         inputSchema: {
           title: z.string().min(1),
           language: z.string().default("pt-BR").describe("BCP 47 tag, e.g. pt-BR or en-US."),
@@ -145,8 +151,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "add_page",
     "draft",
     {
-      description:
-        "Add a page (always created as draft). body is Markdown in the manual's language; see resource explicai://format. Returns id, file and rev.",
+      description: "Add a page (always draft). body is Markdown, see explicai://format. Returns id, file, rev.",
       inputSchema: {
         manual,
         title: z.string().min(1),
@@ -168,23 +173,64 @@ export function registerTools(server: McpServer, cfg: Config): void {
     },
   );
 
+  const node: z.ZodType<PageInput> = z.lazy(() =>
+    z.object({ title: z.string().min(1), body: z.string().optional(), children: z.array(node).optional() }),
+  );
+  add(
+    "add_pages",
+    "draft",
+    {
+      description:
+        "Add a whole page tree in one call (always draft; same checks as add_page). pages: [{title, body?, children?}], in reading order. Returns id, title, file, rev per page, flat, plus warnings.",
+      inputSchema: {
+        manual,
+        pages: z.array(node).min(1).max(100),
+        parentId: z.string().optional().describe("Parent of the top-level pages; omit for the root."),
+      },
+      annotations: WRITE,
+    },
+    async ({ manual, pages, parentId }) => {
+      const dir = await manualDir(cfg, manual);
+      const created: { id: string; title: string; file: string; rev: string | undefined }[] = [];
+      const warnings: string[] = [];
+      const walk = async (list: PageInput[], parent: string | null) => {
+        for (const n of list) {
+          const p = await addPage(dir, { title: n.title, ...(n.body === undefined ? {} : { body: n.body }), parentId: parent });
+          created.push({ id: p.id, title: n.title, file: p.file, rev: p.rev });
+          for (const w of secretWarning(n.body)) warnings.push(`${n.title}: ${w}`);
+          await walk(n.children ?? [], p.id);
+        }
+      };
+      try {
+        await walk(pages, parentId ?? null);
+      } catch (err) {
+        const done = created.map((c) => c.title).join(", ") || "nenhuma";
+        throw new UserError(
+          `${err instanceof Error ? err.message : "Falha ao gravar"} Páginas já criadas: ${done}. Não crie de novo; continue a partir delas.`,
+        );
+      }
+      return { created, warnings };
+    },
+  );
+
   add(
     "update_page",
     "draft",
     {
       description:
-        "Edit a page's title, body or status. Needs the rev from read_page (stale rev is refused). Saves a version 'Antes do agente' when the body changes. status may be rascunho or revisao only. At level draft, only pages still in rascunho can be edited.",
+        "Edit a page's title, body or status. Needs the rev from read_page (stale rev refused); saves version 'Antes do agente' when the body changes. With section (heading title), body replaces only that section's text. status: rascunho or revisao. At level draft, only rascunho pages.",
       inputSchema: {
         manual,
         pageId: z.string(),
         rev: z.string().describe("rev returned by read_page, add_page or the last update_page."),
         title: z.string().min(1).optional(),
         body: z.string().optional(),
+        section: z.string().optional().describe("Heading title; body then replaces only that section."),
         status: z.string().optional().describe("rascunho or revisao."),
       },
       annotations: WRITE,
     },
-    async ({ manual, pageId, rev, title, body, status }) => {
+    async ({ manual, pageId, rev, title, body: given, section, status }) => {
       const dir = await manualDir(cfg, manual);
       if (status !== undefined && status !== "rascunho" && status !== "revisao") {
         throw new UserError(
@@ -200,6 +246,8 @@ export function registerTools(server: McpServer, cfg: Config): void {
       if (page.rev !== rev) {
         throw new UserError("A página mudou desde a última leitura. Chame read_page de novo e refaça a edição com o rev novo.");
       }
+      if (section !== undefined && given === undefined) throw new UserError("section pede body com o texto novo da seção.");
+      const body = section === undefined || given === undefined ? given : replaceSection(page.body, section, given);
       const changed = body !== undefined && body !== page.body;
       // Texto novo numa página que a pessoa já aprovou ou publicou precisa de nova revisão dela.
       const reopen = changed && status === undefined && (page.status === "aprovado" || page.status === "publicado");
@@ -217,7 +265,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
           ...(changed && { beforeWrite: async () => void (await saveVersion(dir, pageId, "Antes do agente")) }),
         },
       );
-      const warnings = secretWarning(body);
+      const warnings = secretWarning(given);
       if (reopen) {
         warnings.push(
           `A página estava "${page.status}" e voltou para revisao porque o texto mudou. Peça à pessoa para aprovar de novo no Studio.`,
@@ -232,7 +280,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Import an image (PNG, JPG, GIF, WebP; max 10 MB; no SVG) into the manual. source is {path} (inside the workspace, the current folder or --allow-dir) or {base64, name}. Returns the Markdown line to paste into the page body, plus width and height in pixels.",
+        "Import an image (PNG, JPG, GIF, WebP; max 10 MB; no SVG). source: {path} (workspace, current folder or --allow-dir) or {base64, name}. Returns the Markdown line to paste in the page, plus width and height in pixels.",
       inputSchema: {
         manual,
         source: z.object({ path: z.string().optional(), base64: z.string().optional(), name: z.string().optional() }),
@@ -255,7 +303,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Add numbered markers, highlights, arrows and clickable hotspots to an imported image. space 'normalized' uses 0-1 coordinates; 'pixels' uses image pixels (e.g. from getBoundingClientRect) and is converted with the real image size. Hotspot target: {type:'page',pageId} (must exist), {type:'anchor',pageId,anchor} or {type:'url',href} (http, https, mailto). Appends to existing annotations.",
+        "Append numbered markers, highlights, arrows and clickable hotspots to an imported image. space: 'normalized' (0-1) or 'pixels' (image pixels, e.g. from getBoundingClientRect). Hotspot target: {type:'page',pageId} (must exist), {type:'anchor',pageId,anchor} or {type:'url',href} (http, https, mailto). Returns counts.",
       inputSchema: {
         manual,
         asset: z.string().describe("assets/<file> as returned by add_image."),
@@ -291,7 +339,14 @@ export function registerTools(server: McpServer, cfg: Config): void {
         ...(arrows && { arrows: arrows.map((a) => ({ from: P(a.from), to: P(a.to) })) }),
         ...(hotspots && { hotspots: hotspots.map((h) => ({ ...R(h), target: h.target })) }),
       };
-      return appendAnnotations(dir, asset, patch);
+      const a = await appendAnnotations(dir, asset, patch);
+      return {
+        asset,
+        markers: a.markers.length,
+        highlights: a.highlights.length,
+        arrows: a.arrows.length,
+        hotspots: a.hotspots.length,
+      };
     },
   );
 
@@ -300,7 +355,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "read",
     {
       description:
-        "Check a manual without changing it. Returns findings per page: steps without 'Resultado:', pages with steps and no screenshot, dead links, missing images, images without markers, hotspots to deleted pages and leftover 'A confirmar'. Empty list = nothing found.",
+        "Read-only check. Findings per page: steps without 'Resultado:', pages with steps and no screenshot, dead links, missing or unmarked images, hotspots to deleted pages, leftover 'A confirmar'.",
       inputSchema: { manual },
       annotations: RO,
     },
@@ -315,7 +370,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Replace an imported image with a version where personal data (name, e-mail, document, token) is already covered by opaque bars. YOU draw the bars on a copy of the image (PNG, JPG or WebP, same format as the asset) and pass that copy as source ({path} or {base64, name}). The original is gone afterwards and markers stay valid, so the new image must have the same size. Metadata is stripped.",
+        "Replace an imported image with a copy where personal data is covered by opaque bars. YOU draw the bars on a copy (PNG, JPG or WebP, same format and size as the asset) and pass it as source ({path} or {base64, name}). The original is gone afterwards; markers stay valid; metadata is stripped.",
       inputSchema: {
         manual,
         asset: z.string().describe("assets/<file> to replace, as returned by add_image."),
@@ -352,7 +407,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Export the manual to html, markdown or pdf (pdf needs Chrome or Edge installed; if it fails, use html). Returns the file path relative to the workspace, page count and warnings. Set onlyApproved to leave out drafts.",
+        "Export to html, markdown or pdf (pdf needs Chrome or Edge; if it fails, use html). Returns file (relative to the workspace), pages, warnings. onlyApproved leaves out drafts.",
       inputSchema: { manual, format: z.enum(["html", "markdown", "pdf"]), onlyApproved: z.boolean().optional() },
       annotations: WRITE,
     },

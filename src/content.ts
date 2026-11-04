@@ -35,6 +35,7 @@ const RULES = `Regras que valem sempre:
 - Olhe cada print antes de importar. Mostra nome, e-mail, documento, token ou outro dado pessoal? Importe com add_image, desenhe tarjas opacas numa cópia e troque pela cópia com redact_image (o original some e não volta). Só se não conseguir tarjar, deixe "Print pendente" e avise no relatório. Prefira print do perfil do público do manual e sem sobreposição de ferramenta de desenvolvimento.
 - Diagrama: use uma imagem PNG já renderizada ou uma lista numerada de passos.
 - Se add_page ou update_page avisar de chave ou token, remova o trecho na hora.
+- Explore pouco: comece por rotas, menu e navegação com busca (grep), leia só o arquivo necessário e não releia o que já leu nem o que acabou de gravar (add_page, add_pages e update_page já devolvem o rev). Grave em lote: add_pages cria a árvore inteira de uma vez; update_page com section troca só uma seção.
 - Antes de entregar, rode check_manual e corrija o que apontar (passo sem "Resultado:", "A confirmar" na página, link morto, imagem sem marcação).`;
 
 const BASICS = `${FORMAT_GUIDE}\n\n${WRITING_GUIDE}\n\n${RULES}`;
@@ -55,7 +56,7 @@ export function autonomousPrompt(a: BuildArgs): string {
 Passos:
 1. Chame list_manuals. Explore o repositório (README, rotas, telas, fluxos) e liste as tarefas que o público faz.
 2. Chame create_manual com título e idioma.
-3. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao, escolha o que serve ao público e monte a árvore nele (módulo > funcionalidade > tarefa). Para cada página: objetivo em uma frase, passos numerados com resultado. Use add_page com parentId para a árvore.
+3. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao, escolha o que serve ao público e monte a árvore nele (módulo > funcionalidade > tarefa). Para cada página: objetivo em uma frase, passos numerados com resultado. Grave a árvore inteira de uma vez com add_pages.
 4. Imagens que existirem: add_image, cole o markdown no passo certo (update_page com o rev) e marque com annotate_image.
 5. Termine com export_manual em html e um relatório: fonte (arquivo ou rota) de cada página, o que você não conseguiu saber ("A confirmar"), imagens com marcação estimada, prints pendentes.
 
@@ -68,7 +69,7 @@ export function guidedPrompt(a: BuildArgs): string {
 Passos:
 1. Chame list_manuals. Explore o repositório para entender o produto.
 2. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao e escolha um. PARE. Mostre à pessoa: o público, o modelo escolhido, a árvore de páginas proposta nele e os prints que seriam necessários. Espere a aprovação dela antes de gravar qualquer coisa.
-3. Com a aprovação, chame create_manual e grave UMA página por vez (add_page). Depois de cada página, mostre o texto à pessoa e espere o ok para seguir.
+3. Com a aprovação, chame create_manual e grave a árvore inteira de uma vez com add_pages. Mostre o texto de todas as páginas juntas e espere o ok; só grave página por página (add_page) e peça ok a cada uma se a pessoa pedir.
 4. Quando faltar um fato (nome de botão, regra, caminho), pergunte. Não invente.
 5. Imagens: pergunte onde estão os prints, importe com add_image e marque com annotate_image.
 6. No fim, ofereça export_manual e entregue o relatório: fonte (arquivo ou rota) de cada página, o que você não conseguiu saber ("A confirmar"), imagens com marcação estimada, prints pendentes.
@@ -119,7 +120,8 @@ export function reviewPrompt(a: { manual: string }): string {
 Passos:
 1. Chame get_manual e check_manual.
 2. Leia cada página com read_page. Confira com o guia de escrita: objetivo em uma frase, um passo por ação, "Resultado:" em cada passo, nome exato dos botões, tom, "A confirmar" e dado pessoal nos prints.
-3. Devolva os achados por página (título, o problema, a sugestão), do mais grave ao menos grave, e uma linha de resumo no fim. Pergunte quais a pessoa quer que você corrija.
+3. Checagem de fatos: para cada botão, campo, menu e mensagem citados nas páginas, procure o texto exato no código do projeto (grep). Liste o que não achou, com a página. Isso mostra se o nome existe no código; não prova que o fluxo funciona.
+4. Devolva os achados por página (título, o problema, a sugestão), do mais grave ao menos grave, e uma linha de resumo no fim. Pergunte quais a pessoa quer que você corrija.
 
 Regras:
 ${SOURCES}
