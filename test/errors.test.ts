@@ -34,7 +34,12 @@ describe("safe", () => {
   it("erro nativo não repassa a mensagem, só o código", async () => {
     const err = Object.assign(new Error("EACCES, open '/etc/shadow'"), { code: "EACCES" });
     expect(await fail(err)).toBe("Erro inesperado (EACCES)");
-    expect(await fail(new Error("falha em /home/ana/x"))).toBe("Erro inesperado");
+    expect(await fail("texto solto")).toBe("Erro inesperado");
+  });
+
+  it("Error simples do core mantém a dica, sem o caminho", async () => {
+    expect(await fail(new Error("Status inválido."))).toBe("Status inválido.");
+    expect(await fail(new Error("falha em /home/ana/x"))).toBe("falha em <caminho>");
   });
 
   it("ExplicaiError passa a mensagem", async () => {
