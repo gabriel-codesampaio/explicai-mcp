@@ -64,6 +64,15 @@ Público: `add_page`, `add_pages` e `update_page` aceitam `audience` (lista de p
 
 Atenção: `--allow-dir` e a pasta onde o servidor abre entram na lista de leitura de `add_image`. Se você abrir o servidor na sua home, o agente pode importar qualquer imagem de toda a home. Abra numa pasta de projeto ou use `--allow-dir` com pastas específicas.
 
+## Compatibilidade com o explicai
+
+O MCP usa o pacote `explicai` (o core com `explicai/core`) e aceita as versões `>=0.3.0 <2.0.0`. Ao iniciar, ele confere a versão instalada; fora da faixa, não sobe e diz o que fazer:
+
+- `explicai` antigo demais: `npm install explicai@latest`.
+- `explicai` mais novo do que o MCP conhece: `npm install explicai-mcp@latest`.
+
+O MCP segue na 0.x, com versão própria; só o Studio (`explicai`) vai à 1.0. A mesma faixa está em `peerDependencies`.
+
 ## Limite
 
 `--level` e `--manual` evitam engano, não são barreira de segurança. Um agente que tem Read, Write e Bash próprios lê e grava qualquer arquivo do disco sem passar por este servidor. Isolamento de verdade vem das permissões do próprio cliente.
