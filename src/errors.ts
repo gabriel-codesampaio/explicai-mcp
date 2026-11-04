@@ -15,7 +15,7 @@ export interface ToolResult {
 const ABS_PATH = /(?<![\w/:.~-])\/[\w.-]+(?:\/[^\n"'`)]*)?|(?<!\w)[A-Za-z]:[/][^\n"'`)]*|\\[^\n"'`)]*/g;
 
 export function ok(data: unknown): ToolResult {
-  return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data) }] };
 }
 
 /** Roda a tool e traduz qualquer falha em resposta de erro em português, sem caminho absoluto. */
