@@ -46,10 +46,11 @@ beforeEach(async () => {
 describe("níveis", () => {
   it("registra só as tools do nível", async () => {
     const names = async (l: Level) => (await (await connect({}, l)).client.listTools()).tools.map((t) => t.name).sort();
-    expect(await names("read")).toEqual(["get_manual", "list_manuals", "read_page"]);
+    expect(await names("read")).toEqual(["check_manual", "get_manual", "list_manuals", "read_page"]);
     const draft = await names("draft");
     expect(draft).toContain("create_manual");
-    expect(draft).toHaveLength(9);
+    expect(draft).toHaveLength(11);
+    expect(draft).toContain("redact_image");
     expect(draft.some((n) => /delete|remove|approve|publish/.test(n))).toBe(false);
   });
 
@@ -57,6 +58,9 @@ describe("níveis", () => {
     const { client } = await connect();
     expect((await client.listResources()).resources.map((r) => r.uri).sort()).toEqual([
       "explicai://format",
+      "explicai://templates/administracao",
+      "explicai://templates/modulo",
+      "explicai://templates/onboarding",
       "explicai://writing-guide",
     ]);
     const p = await client.getPrompt({ name: "build_manual_guided", arguments: { audience: "caixa" } });
@@ -66,6 +70,8 @@ describe("níveis", () => {
     expect((await client.listPrompts()).prompts.map((x) => x.name).sort()).toEqual([
       "build_manual_autonomous",
       "build_manual_guided",
+      "capture_walkthrough",
+      "review_manual",
     ]);
   });
 });

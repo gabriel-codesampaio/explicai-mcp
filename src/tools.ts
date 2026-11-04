@@ -4,6 +4,7 @@ import {
   type AnnotationsPatch,
   addPage,
   appendAnnotations,
+  checkManual,
   createManual,
   type ExportFormat,
   exportManual,
@@ -15,6 +16,7 @@ import {
   readManual,
   readPage,
   readPageTree,
+  redactAsset,
   saveAsset,
   saveVersion,
   slugify,
@@ -290,6 +292,58 @@ export function registerTools(server: McpServer, cfg: Config): void {
         ...(hotspots && { hotspots: hotspots.map((h) => ({ ...R(h), target: h.target })) }),
       };
       return appendAnnotations(dir, asset, patch);
+    },
+  );
+
+  add(
+    "check_manual",
+    "read",
+    {
+      description:
+        "Check a manual without changing it. Returns findings per page: steps without 'Resultado:', pages with steps and no screenshot, dead links, missing images, images without markers, hotspots to deleted pages and leftover 'A confirmar'. Empty list = nothing found.",
+      inputSchema: { manual },
+      annotations: RO,
+    },
+    async ({ manual }) => {
+      const findings = await checkManual(await manualDir(cfg, manual));
+      return { count: findings.length, findings };
+    },
+  );
+
+  add(
+    "redact_image",
+    "draft",
+    {
+      description:
+        "Replace an imported image with a version where personal data (name, e-mail, document, token) is already covered by opaque bars. YOU draw the bars on a copy of the image (PNG, JPG or WebP, same format as the asset) and pass that copy as source ({path} or {base64, name}). The original is gone afterwards and markers stay valid, so the new image must have the same size. Metadata is stripped.",
+      inputSchema: {
+        manual,
+        asset: z.string().describe("assets/<file> to replace, as returned by add_image."),
+        source: z.object({ path: z.string().optional(), base64: z.string().optional(), name: z.string().optional() }),
+      },
+      annotations: { ...WRITE, destructiveHint: true },
+    },
+    async ({ manual, asset, source }) => {
+      const dir = await manualDir(cfg, manual);
+      if (!ASSET.test(asset)) throw new UserError("asset deve ser assets/<arquivo>, como devolvido por add_image.");
+      const before = await imageSize(path.join(dir, asset)).catch(() => null);
+      if (!before) throw new UserError(`Imagem ${asset} não encontrada. Importe com add_image primeiro.`);
+      if (cfg.level === "draft")
+        await assertOnlyDraftPagesUse(
+          dir,
+          asset,
+          flatten((await readManual(dir)).pages).map((n) => n.id),
+        );
+      const { data } = await loadImage(cfg, source);
+      await redactAsset(dir, asset, data);
+      const after = await imageSize(path.join(dir, asset));
+      const resized = after && (after.w !== before.w || after.h !== before.h);
+      return {
+        asset,
+        width: after?.w ?? null,
+        height: after?.h ?? null,
+        warnings: resized ? ["O tamanho mudou: as marcações já postas podem ter saído do lugar. Confira no Studio."] : [],
+      };
     },
   );
 
