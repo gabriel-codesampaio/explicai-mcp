@@ -31,8 +31,8 @@ const RULES = `Regras que valem sempre:
 - Tudo que você grava nasce como rascunho. Você nunca marca aprovado nem publicado, e não há tool para apagar: isso é da pessoa, no Studio.
 - Antes de criar, chame list_manuals e get_manual: não duplique um manual que já existe.
 - Se o Studio estiver aberto, peça à pessoa para recarregar a aba depois que você gravar.
-- Imagem: use add_image com arquivo do workspace ou da pasta atual (nada de SVG, até 10 MB). Marcação posta sem ver a tela é estimativa: liste essas imagens no relatório para a pessoa conferir no Studio. Sem print, deixe a frase "Print pendente: tela X" na página e liste no relatório.
-- Olhe cada print antes de importar. Mostra nome, e-mail, documento, token ou outro dado pessoal? Importe com add_image, desenhe tarjas opacas numa cópia e troque pela cópia com redact_image (o original some e não volta). Só se não conseguir tarjar, deixe "Print pendente" e avise no relatório. Prefira print do perfil do público do manual e sem sobreposição de ferramenta de desenvolvimento.
+- Imagem: use add_image com arquivo do workspace ou da pasta atual (nada de SVG, até 10 MB). Marcação posta sem ver a tela é estimativa: liste essas imagens no relatório para a pessoa conferir no Studio. Sem print, não escreva nada na página: a pendência vai só para o relatório (o check_manual aponta no-image).
+- Olhe cada print antes de importar. Mostra nome, e-mail, documento, token ou outro dado pessoal? Importe com add_image, desenhe tarjas opacas numa cópia e troque pela cópia com redact_image (o original some e não volta). Se não conseguir tarjar, não use o print e avise no relatório. Prefira print do perfil do público do manual e sem sobreposição de ferramenta de desenvolvimento.
 - Diagrama: use uma imagem PNG já renderizada ou uma lista numerada de passos.
 - Se add_page ou update_page avisar de chave ou token, remova o trecho na hora.
 - Explore pouco: comece por rotas, menu e navegação com busca (grep), leia só o arquivo necessário e não releia o que já leu nem o que acabou de gravar (add_page, add_pages e update_page já devolvem o rev). Grave em lote: add_pages cria a árvore inteira de uma vez; update_page com section troca só uma seção.
@@ -139,7 +139,7 @@ Passos:
 2. Chame get_manual e read_page nas páginas que podem ser afetadas. Liste só as afetadas, com o motivo.
 3. Para cada página afetada, MOSTRE à pessoa o ANTES e o DEPOIS (o trecho atual e o texto novo). PARE e espere a aprovação dela.
 4. Só com a aprovação, grave com update_page (use o rev lido; o Explicaí guarda a versão "Antes do agente"). Uma página por vez. Página aprovada ou publicada volta para revisão: avise a pessoa para aprovar de novo no Studio.
-5. Print que ficou velho: peça o novo à pessoa; se tiver dado pessoal, oculte com redact_image. Sem print novo, deixe "Print pendente: tela X".
+5. Print que ficou velho: peça o novo à pessoa; se tiver dado pessoal, oculte com redact_image. Sem print novo, nada na página: avise no relatório.
 6. Rode check_manual no fim e entregue o relatório: páginas mudadas, páginas conferidas e sem mudança, o que não deu para confirmar.
 
 Regras:
@@ -157,7 +157,7 @@ Passos:
 1. Chame get_manual. Se a página da tarefa não existe, crie com add_page (rascunho).
 2. Com o navegador que você tem (Playwright ou Chrome DevTools), percorra a tarefa uma ação por vez. Um print por passo, sempre na mesma largura de tela.
 3. Em cada passo, meça a posição real do elemento com getBoundingClientRect (x, y, width, height do botão ou campo, em pixels da página) e guarde junto do print.
-4. Antes de importar, olhe o print. Tem dado pessoal ou sensível (nome, e-mail, documento, token, valor de cliente)? Importe com add_image, desenhe tarjas opacas numa cópia e troque pela cópia com redact_image. Sem como tarjar, não use o print: deixe "Print pendente".
+4. Antes de importar, olhe o print. Tem dado pessoal ou sensível (nome, e-mail, documento, token, valor de cliente)? Importe com add_image, desenhe tarjas opacas numa cópia e troque pela cópia com redact_image. Sem como tarjar, não use o print e avise no relatório.
 5. Chame annotate_image com space "pixels", usando os valores do getBoundingClientRect (marker no centro do elemento, highlight no retângulo). Os pixels têm de ser os da imagem: se o devicePixelRatio não for 1, multiplique os valores por ele.
 6. Escreva os passos na página (update_page com o rev), cada um com "Resultado:" e a imagem logo abaixo. Rode check_manual no fim.
 

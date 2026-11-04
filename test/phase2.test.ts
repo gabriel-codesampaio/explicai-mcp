@@ -98,6 +98,18 @@ describe("resources e prompts da fase 2", () => {
     expect(await names("update")).toContain("update_manual");
   });
 
+  it("nenhum prompt manda deixar \"Print pendente\" na página", async () => {
+    const { prompt } = await connect("update");
+    const all = [
+      await prompt("build_manual_autonomous", { audience: "x" }),
+      await prompt("build_manual_guided", { audience: "x" }),
+      await prompt("review_manual", { manual: "m" }),
+      await prompt("update_manual", { manual: "m", change: "c" }),
+      await prompt("capture_walkthrough", { manual: "m", task: "t" }),
+    ];
+    for (const t of all) expect(t).not.toMatch(/Print pendente/);
+  });
+
   it("os prompts trazem as regras pedidas", async () => {
     const { prompt } = await connect("update");
     const review = await prompt("review_manual", { manual: "m" });
