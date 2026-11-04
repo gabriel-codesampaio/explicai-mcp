@@ -34,8 +34,7 @@ jobs:
             exit 1
           fi
 
-      # Sem package-lock.json no repo (está no .gitignore), por isso `npm install`.
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       # prepublishOnly roda lint, tipos, build e testes antes de publicar.
       - run: npm publish --provenance --access public
         env:
