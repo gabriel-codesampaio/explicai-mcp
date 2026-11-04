@@ -43,6 +43,9 @@ jobs:
           npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
       - name: Instala as dependências com o tarball do explicai
         run: npm install --no-package-lock --no-save --no-audit --no-fund "$RUNNER_TEMP"/explicai-*.tgz
+      # O lint varre a pasta do projeto e recusa um segundo biome.json.
+      - name: Tira o Studio da pasta do projeto
+        run: rm -rf .studio
 
       - run: npm run lint
       - run: npm run typecheck
