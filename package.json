@@ -2,8 +2,32 @@
   "name": "explicai-mcp",
   "version": "0.1.0",
   "description": "MCP server so an AI agent can build and export Explicaí manuals. Servidor MCP para o agente de IA montar e exportar manuais do Explicaí.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "explicai",
+    "manual",
+    "user-manual",
+    "documentation",
+    "documentacao",
+    "screenshots",
+    "ai-agent",
+    "claude",
+    "llm",
+    "stdio",
+    "open-source"
+  ],
   "license": "MIT",
   "author": "Gabriel Sampaio",
+  "homepage": "https://github.com/gabriel-codesampaio/explicai-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabriel-codesampaio/explicai-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gabriel-codesampaio/explicai-mcp/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=20.12"
@@ -13,14 +37,16 @@
   },
   "files": [
     "dist",
-    "!dist/**/*.map"
+    "!dist/**/*.map",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
@@ -34,5 +60,8 @@
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
