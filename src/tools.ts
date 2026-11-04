@@ -116,7 +116,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
       const dir = await manualDir(cfg, manual);
       const p = await readPage(dir, pageId);
       const text = section === undefined ? p.body : readSection(p.body, section);
-      const assets = [...new Set([...p.body.matchAll(MENTION)].map((m) => decode(`assets/${m[1]}`)))];
+      const assets = [...new Set([...text.matchAll(MENTION)].map((m) => decode(`assets/${m[1]}`)))];
       const images = await Promise.all(
         assets.filter((a) => ASSET.test(a)).map(async (asset) => ({ asset, annotations: await readAnnotations(dir, asset) })),
       );
@@ -247,7 +247,9 @@ export function registerTools(server: McpServer, cfg: Config): void {
         throw new UserError("A página mudou desde a última leitura. Chame read_page de novo e refaça a edição com o rev novo.");
       }
       if (section !== undefined && given === undefined) throw new UserError("section pede body com o texto novo da seção.");
-      const body = section === undefined || given === undefined ? given : replaceSection(page.body, section, given);
+      const eol = page.body.includes("\r\n") ? "\r\n" : "\n";
+      const body =
+        section === undefined || given === undefined ? given : replaceSection(page.body, section, given).replace(/\r?\n/g, eol);
       const changed = body !== undefined && body !== page.body;
       // Texto novo numa página que a pessoa já aprovou ou publicou precisa de nova revisão dela.
       const reopen = changed && status === undefined && (page.status === "aprovado" || page.status === "publicado");

@@ -175,6 +175,8 @@ describe("economia: add_pages e section", () => {
     const after = (await call("read_page", { manual, pageId: p.id })).json;
     expect(after.body).toBe(["Intro.", "", "## Passos", "", "1. Novo.", "", "## Avisos", "", "não mexe"].join("\n"));
     expect(up.json).toEqual({ id: p.id, rev: after.rev, warnings: [] });
+    const c = (await call("add_page", { manual, title: "C", body: ["## C#", "", "x", "", "## Fim", "", "y"].join("\n") })).json;
+    expect((await call("read_page", { manual, pageId: c.id, section: "C#" })).json.body).toBe("x");
     const bad = await call("update_page", { manual, pageId: p.id, rev: after.rev, section: "Nada", body: "x" });
     expect(bad.error).toBe(true);
     expect(bad.text).toMatch(/Passos/);

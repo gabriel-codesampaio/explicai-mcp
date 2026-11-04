@@ -1,6 +1,6 @@
 import { UserError } from "./errors.js";
 
-const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
+const HEADING = /^(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/;
 
 interface Span {
   /** Linha do título e linha onde a seção termina (exclusive). */
