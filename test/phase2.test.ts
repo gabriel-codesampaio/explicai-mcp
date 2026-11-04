@@ -98,7 +98,7 @@ describe("resources e prompts da fase 2", () => {
     expect(await names("update")).toContain("update_manual");
   });
 
-  it("nenhum prompt manda deixar \"Print pendente\" na página", async () => {
+  it('nenhum prompt manda deixar "Print pendente" na página', async () => {
     const { prompt } = await connect("update");
     const all = [
       await prompt("build_manual_autonomous", { audience: "x" }),
