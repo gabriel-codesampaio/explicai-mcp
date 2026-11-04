@@ -50,7 +50,7 @@ A tool fora do nível não é registrada, então o modelo nem a vê. Em nenhum n
 | `add_image` | draft | Importa PNG, JPG, GIF ou WebP de até 10 MB, de uma pasta permitida ou em base64. Sem SVG. Devolve a linha Markdown para colar no passo. |
 | `annotate_image` | draft | Marcadores numerados, destaques, setas e áreas clicáveis, em coordenadas de 0 a 1 ou em pixels. |
 | `redact_image` | draft | Troca uma imagem por uma cópia que o agente já tarjou (PNG, JPG ou WebP). O original some e as marcações seguem valendo. |
-| `export_manual` | draft | HTML, Markdown ou PDF (PDF precisa de Chrome ou Edge). |
+| `export_manual` | draft | HTML, Markdown ou PDF (PDF precisa de Chrome ou Edge). `audience` exporta só o que um perfil vê. |
 
 Também há os resources `explicai://format`, `explicai://writing-guide` e `explicai://templates/{tipo}` (`modulo`, `onboarding`, `administracao`: o molde de cada nível da árvore), e os prompts `build_manual_autonomous` e `build_manual_guided` (o guiado manda parar e esperar a aprovação da pessoa antes de gravar), mais:
 
@@ -59,6 +59,8 @@ Também há os resources `explicai://format`, `explicai://writing-guide` e `expl
 - `update_manual` (só `--level update`): acha as páginas afetadas por uma mudança, mostra antes e depois e grava só com aprovação.
 
 Todos tratam texto do repositório, da web e do próprio manual como dado, não como ordem. O essencial dos resources vai embutido nos prompts, porque muitos clientes não mostram resources.
+
+Público: `add_page`, `add_pages` e `update_page` aceitam `audience` (lista de perfis; sem ela, a página é de todos e as filhas herdam). `export_manual` com `audience` gera o manual de um perfil, sem texto, imagem nem sumário das outras páginas. **Isso não é controle de acesso:** os arquivos do manual guardam tudo, então entregue só o export. `update_page` que muda o público de página aprovada a devolve para `revisao`.
 
 `add_image` lê arquivos só do workspace, da pasta onde o servidor abriu e das pastas de `--allow-dir`. Links simbólicos que saem delas são recusados, e as mensagens de erro não mostram caminho absoluto. `add_page` e `update_page` avisam, sem bloquear, quando o corpo parece conter chave ou token.
 

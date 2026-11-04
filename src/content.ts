@@ -36,6 +36,7 @@ const RULES = `Regras que valem sempre:
 - Diagrama: use uma imagem PNG já renderizada ou uma lista numerada de passos.
 - Se add_page ou update_page avisar de chave ou token, remova o trecho na hora.
 - Explore pouco: comece por rotas, menu e navegação com busca (grep), leia só o arquivo necessário e não releia o que já leu nem o que acabou de gravar (add_page, add_pages e update_page já devolvem o rev). Grave em lote: add_pages cria a árvore inteira de uma vez; update_page com section troca só uma seção.
+- Perfis: se o sistema tem mais de um (admin, operador, cliente), página de um perfil só leva audience em add_page, add_pages ou update_page (sem audience = todos; filha herda). Entregue um export por perfil (export_manual com audience). Isso filtra o export, não protege os arquivos.
 - Antes de entregar, rode check_manual e corrija o que apontar (passo sem "Resultado:", "A confirmar" na página, link morto, imagem sem marcação).`;
 
 const BASICS = `${FORMAT_GUIDE}\n\n${WRITING_GUIDE}\n\n${RULES}`;
@@ -54,7 +55,7 @@ export function autonomousPrompt(a: BuildArgs): string {
   return `Você vai criar um manual NOVO no Explicaí, sozinho, a partir do que o projeto mostra. ${header(a)}
 
 Passos:
-1. Chame list_manuals. Explore o repositório (README, rotas, telas, fluxos) e liste as tarefas que o público faz.
+1. Chame list_manuals. Explore o repositório (README, rotas, telas, fluxos) e liste as tarefas que o público faz e os perfis do sistema (papéis, permissões).
 2. Chame create_manual com título e idioma.
 3. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao, escolha o que serve ao público e monte a árvore nele (módulo > funcionalidade > tarefa). Para cada página: objetivo em uma frase, passos numerados com resultado. Grave a árvore inteira de uma vez com add_pages.
 4. Imagens que existirem: add_image, cole o markdown no passo certo (update_page com o rev) e marque com annotate_image.
@@ -68,7 +69,7 @@ export function guidedPrompt(a: BuildArgs): string {
 
 Passos:
 1. Chame list_manuals. Explore o repositório para entender o produto.
-2. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao e escolha um. PARE. Mostre à pessoa: o público, o modelo escolhido, a árvore de páginas proposta nele e os prints que seriam necessários. Espere a aprovação dela antes de gravar qualquer coisa.
+2. Leia os modelos explicai://templates/modulo, explicai://templates/onboarding e explicai://templates/administracao e escolha um. PARE. Pergunte quais perfis usam o sistema (admin, operador, cliente) e quais páginas são só de um deles. Mostre à pessoa: o público, os perfis, o modelo escolhido, a árvore de páginas proposta nele e os prints que seriam necessários. Espere a aprovação dela antes de gravar qualquer coisa.
 3. Com a aprovação, chame create_manual e grave a árvore inteira de uma vez com add_pages. Mostre o texto de todas as páginas juntas e espere o ok; só grave página por página (add_page) e peça ok a cada uma se a pessoa pedir.
 4. Quando faltar um fato (nome de botão, regra, caminho), pergunte. Não invente.
 5. Imagens: pergunte onde estão os prints, importe com add_image e marque com annotate_image.
