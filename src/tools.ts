@@ -42,8 +42,12 @@ const target = z.union([
 const ASSET = /^assets\/[^/\\]+$/;
 const MENTION = /assets\/([^)\s"'#?]+)/g;
 
+const audienceField = z.array(z.string().min(1).max(40)).max(10);
+const sameList = (a: string[] = [], b: string[] = []) => a.length === b.length && a.every((x, i) => x === b[i]);
+
 interface PageInput {
   title: string;
+  audience?: string[] | undefined;
   body?: string | undefined;
   children?: PageInput[] | undefined;
 }
@@ -53,6 +57,7 @@ const stripTree = (nodes: PageTreeNode[]): unknown[] =>
     id: n.id,
     title: n.title,
     status: n.status,
+    ...(n.audience ? { audience: n.audience } : {}),
     ...(n.problem ? { problem: n.problem } : {}),
     children: stripTree(n.children),
   }));
@@ -92,14 +97,21 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "get_manual",
     "read",
     {
-      description: "Manual title, language, theme and page tree (id, title, status). Call before writing to an existing manual.",
+      description:
+        "Manual title, language, theme, audiences (profiles) and page tree (id, title, status, audience). Call before writing to an existing manual.",
       inputSchema: { manual },
       annotations: RO,
     },
     async ({ manual }) => {
       const dir = await manualDir(cfg, manual);
       const meta = await readManual(dir);
-      return { title: meta.title, language: meta.language, theme: meta.theme ?? null, tree: stripTree(await readPageTree(dir)) };
+      return {
+        title: meta.title,
+        language: meta.language,
+        theme: meta.theme ?? null,
+        audiences: meta.audiences ?? [],
+        tree: stripTree(await readPageTree(dir)),
+      };
     },
   );
 
@@ -108,7 +120,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "read",
     {
       description:
-        "Read a page: body (Markdown), status, rev (needed by update_page) and its images with annotations. section (heading title) returns only that section's text.",
+        "Read a page: body (Markdown), status, audience, rev (needed by update_page) and its images with annotations. section (heading title) returns only that section's text.",
       inputSchema: { manual, pageId: z.string(), section: z.string().optional() },
       annotations: RO,
     },
@@ -120,7 +132,15 @@ export function registerTools(server: McpServer, cfg: Config): void {
       const images = await Promise.all(
         assets.filter((a) => ASSET.test(a)).map(async (asset) => ({ asset, annotations: await readAnnotations(dir, asset) })),
       );
-      return { id: p.id, title: p.title, status: p.status, body: text, rev: p.rev, images };
+      return {
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        ...(p.audience ? { audience: p.audience } : {}),
+        body: text,
+        rev: p.rev,
+        images,
+      };
     },
   );
 
@@ -151,37 +171,45 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "add_page",
     "draft",
     {
-      description: "Add a page (always draft). body is Markdown, see explicai://format. Returns id, file, rev.",
+      description:
+        "Add a page (always draft). body is Markdown, see explicai://format. audience: profiles that see it (omit = everyone; children inherit). Returns id, file, rev.",
       inputSchema: {
         manual,
         title: z.string().min(1),
         body: z.string().optional(),
         parentId: z.string().optional().describe("Parent page id; omit for a top-level page."),
         index: z.number().int().min(0).optional(),
+        audience: audienceField.optional(),
       },
       annotations: WRITE,
     },
-    async ({ manual, title, body, parentId, index }) => {
+    async ({ manual, title, body, parentId, index, audience }) => {
       const dir = await manualDir(cfg, manual);
       const p = await addPage(dir, {
         title,
         ...(body === undefined ? {} : { body }),
         parentId: parentId ?? null,
         ...(index === undefined ? {} : { index }),
+        ...(audience ? { audience } : {}),
       });
       return { id: p.id, file: p.file, rev: p.rev, warnings: secretWarning(body) };
     },
   );
 
   const node: z.ZodType<PageInput> = z.lazy(() =>
-    z.object({ title: z.string().min(1), body: z.string().optional(), children: z.array(node).optional() }),
+    z.object({
+      title: z.string().min(1),
+      body: z.string().optional(),
+      audience: audienceField.optional(),
+      children: z.array(node).optional(),
+    }),
   );
   add(
     "add_pages",
     "draft",
     {
       description:
-        "Add a whole page tree in one call (always draft; same checks as add_page). pages: [{title, body?, children?}], in reading order. Returns id, title, file, rev per page, flat, plus warnings.",
+        "Add a whole page tree in one call (always draft; same checks as add_page). pages: [{title, body?, audience?, children?}], in reading order. Returns id, title, file, rev per page, flat, plus warnings.",
       inputSchema: {
         manual,
         pages: z.array(node).min(1).max(100),
@@ -195,7 +223,12 @@ export function registerTools(server: McpServer, cfg: Config): void {
       const warnings: string[] = [];
       const walk = async (list: PageInput[], parent: string | null) => {
         for (const n of list) {
-          const p = await addPage(dir, { title: n.title, ...(n.body === undefined ? {} : { body: n.body }), parentId: parent });
+          const p = await addPage(dir, {
+            title: n.title,
+            ...(n.body === undefined ? {} : { body: n.body }),
+            ...(n.audience ? { audience: n.audience } : {}),
+            parentId: parent,
+          });
           created.push({ id: p.id, title: n.title, file: p.file, rev: p.rev });
           for (const w of secretWarning(n.body)) warnings.push(`${n.title}: ${w}`);
           await walk(n.children ?? [], p.id);
@@ -218,7 +251,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Edit a page's title, body or status. Needs the rev from read_page (stale rev refused); saves version 'Antes do agente' when the body changes. With section (heading title), body replaces only that section's text. status: rascunho or revisao. At level draft, only rascunho pages.",
+        "Edit a page's title, body or status. Needs the rev from read_page (stale rev refused); saves version 'Antes do agente' when the body changes. audience: profiles (empty list = everyone); changing it on an approved page sends it back to revisao. With section (heading title), body replaces only that section's text. status: rascunho or revisao. At level draft, only rascunho pages.",
       inputSchema: {
         manual,
         pageId: z.string(),
@@ -227,10 +260,11 @@ export function registerTools(server: McpServer, cfg: Config): void {
         body: z.string().optional(),
         section: z.string().optional().describe("Heading title; body then replaces only that section."),
         status: z.string().optional().describe("rascunho or revisao."),
+        audience: audienceField.optional(),
       },
       annotations: WRITE,
     },
-    async ({ manual, pageId, rev, title, body: given, section, status }) => {
+    async ({ manual, pageId, rev, title, body: given, section, status, audience }) => {
       const dir = await manualDir(cfg, manual);
       if (status !== undefined && status !== "rascunho" && status !== "revisao") {
         throw new UserError(
@@ -252,13 +286,16 @@ export function registerTools(server: McpServer, cfg: Config): void {
         section === undefined || given === undefined ? given : replaceSection(page.body, section, given).replace(/\r?\n/g, eol);
       const changed = body !== undefined && body !== page.body;
       // Texto novo numa página que a pessoa já aprovou ou publicou precisa de nova revisão dela.
-      const reopen = changed && status === undefined && (page.status === "aprovado" || page.status === "publicado");
+      const audienceChanged = audience !== undefined && !sameList(audience, page.audience);
+      const reopen =
+        (changed || audienceChanged) && status === undefined && (page.status === "aprovado" || page.status === "publicado");
       const next = await updatePage(
         dir,
         pageId,
         {
           ...(title === undefined ? {} : { title }),
           ...(body === undefined ? {} : { body }),
+          ...(audience === undefined ? {} : { audience }),
           ...(status === undefined ? (reopen ? { status: "revisao" as const } : {}) : { status }),
         },
         {
@@ -270,7 +307,7 @@ export function registerTools(server: McpServer, cfg: Config): void {
       const warnings = secretWarning(given);
       if (reopen) {
         warnings.push(
-          `A página estava "${page.status}" e voltou para revisao porque o texto mudou. Peça à pessoa para aprovar de novo no Studio.`,
+          `A página estava "${page.status}" e voltou para revisao porque o texto ou o público mudou. Peça à pessoa para aprovar de novo no Studio.`,
         );
       }
       return { id: next.id, rev: next.rev, warnings };
@@ -409,13 +446,21 @@ export function registerTools(server: McpServer, cfg: Config): void {
     "draft",
     {
       description:
-        "Export to html, markdown or pdf (pdf needs Chrome or Edge; if it fails, use html). Returns file (relative to the workspace), pages, warnings. onlyApproved leaves out drafts.",
-      inputSchema: { manual, format: z.enum(["html", "markdown", "pdf"]), onlyApproved: z.boolean().optional() },
+        "Export to html, markdown or pdf (pdf needs Chrome or Edge; if it fails, use html). Returns file (relative to the workspace), pages, warnings. onlyApproved leaves out drafts. audience: export only what that profile sees (links to other pages become text, warned); omit = all.",
+      inputSchema: {
+        manual,
+        format: z.enum(["html", "markdown", "pdf"]),
+        onlyApproved: z.boolean().optional(),
+        audience: z.string().min(1).max(40).optional(),
+      },
       annotations: WRITE,
     },
-    async ({ manual, format, onlyApproved }) => {
+    async ({ manual, format, onlyApproved, audience }) => {
       const dir = await manualDir(cfg, manual);
-      const r = await exportManual(dir, format as ExportFormat, onlyApproved ? { onlyApproved: true } : {});
+      const r = await exportManual(dir, format as ExportFormat, {
+        ...(onlyApproved ? { onlyApproved: true } : {}),
+        ...(audience ? { audience } : {}),
+      });
       return { file: `${slugOf(dir)}/${r.file}`, pages: r.pages, warnings: r.warnings };
     },
   );
