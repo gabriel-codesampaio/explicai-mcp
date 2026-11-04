@@ -23,10 +23,12 @@ export async function safe(run: () => Promise<unknown>): Promise<ToolResult> {
   try {
     return ok(await run());
   } catch (err) {
-    // Só erro nosso tem mensagem segura. O resto (ex.: `EACCES, open '...'`) vira só o código.
+    // Erro do sistema tem `code` (ex.: `EACCES, open '...'`) e vira só o código. O core lança
+    // `Error` simples com mensagem útil ao agente (ex.: PDF sem navegador), que segue sem o caminho.
     const code = (err as { code?: unknown } | null)?.code;
+    const own = err instanceof UserError || err instanceof ExplicaiError;
     const text =
-      err instanceof UserError || err instanceof ExplicaiError
+      own || (err instanceof Error && code === undefined)
         ? err.message
         : `Erro inesperado${typeof code === "string" ? ` (${code})` : ""}`;
     return { content: [{ type: "text", text: text.replace(ABS_PATH, "<caminho>") }], isError: true };
