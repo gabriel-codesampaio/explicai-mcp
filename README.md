@@ -24,8 +24,6 @@ npx explicai-mcp <workspace> [--level read|draft|update] [--manual <slug>]... [-
 
 Um servidor por projeto: o workspace vem da linha de comando e nunca de argumento de tool.
 
-> Ainda não publicado no npm. Enquanto isso, rode a partir do clone: `npm install && npm run build && node dist/cli.js <workspace>`. Precisa do pacote `explicai` com o core novo (>= 0.3.0).
-
 ## Níveis de autonomia
 
 | `--level` | O agente pode |
