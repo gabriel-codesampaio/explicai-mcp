@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -283,6 +283,14 @@ describe("--manual e slug", () => {
     expect((await lim.call("add_page", { manual: b, title: "x" })).error).toBe(true);
     expect((await lim.client.listTools()).tools.map((t) => t.name)).not.toContain("create_manual");
     for (const slug of ["../x", "a/b", "a\\b", ".."]) expect((await call("get_manual", { manual: slug })).error, slug).toBe(true);
+  });
+
+  it("recusa manual que é link para fora do workspace", async () => {
+    const { call } = await connect();
+    const real = (await call("create_manual", { title: "Real" })).json.slug;
+    await rename(path.join(ws, real), path.join(outside, "real"));
+    await symlink(path.join(outside, "real"), path.join(ws, real), "junction");
+    expect((await call("get_manual", { manual: real })).error).toBe(true);
   });
 
   it("create_manual recusa slug existente", async () => {
