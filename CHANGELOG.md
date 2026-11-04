@@ -6,6 +6,10 @@ All notable changes to explicai-mcp are listed here, in Portuguese first with a 
 
 ## [Unreleased]
 
+### Adicionado
+
+- `annotate_image` aceita `style` opcional em cada marcador, seta, destaque e área clicável, com enum fechado (cor, tamanho, espessura, preenchimento, borda). `read_page` devolve o `style`; regravar sem `style` não apaga o existente. Requer `explicai` 0.4.0 ou mais novo. / `annotate_image` takes an optional closed-enum per-item `style`; `read_page` returns it; rewriting without `style` keeps the existing one. Needs `explicai` 0.4.0 or newer.
+
 ## [0.1.0] - 2026-11-04
 
 Primeira versão publicada. Requer o pacote `explicai` 0.3.0 ou mais novo (o core com `explicai/core`).
