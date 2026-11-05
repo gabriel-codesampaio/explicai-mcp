@@ -4,6 +4,10 @@ Servidor MCP para o agente de IA montar e exportar manuais do [Explicaí](https:
 
 **In English:** an MCP server (stdio) that lets an AI agent create Explicaí manuals: pages, images with numbered markers and clickable areas, and export to HTML, Markdown or PDF. It never approves, publishes or deletes anything. Quick start: `npx explicai-mcp <workspace>`. Levels `--level read|draft|update` and `--manual <slug>` reduce what the agent can touch, but they are not a security boundary (see "Limite" below).
 
+Status: pausado em 0.x. Funciona, mas a prioridade agora é o Studio; a API pode mudar entre versões 0.x.
+
+**Status:** paused at 0.x. It works, but the focus is the Studio now; the API may change between 0.x releases.
+
 ## Instalação
 
 Requer Node 22.12 ou mais novo.
