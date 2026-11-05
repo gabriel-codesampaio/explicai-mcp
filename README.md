@@ -6,7 +6,7 @@ Servidor MCP para o agente de IA montar e exportar manuais do [Explicaí](https:
 
 ## Instalação
 
-Requer Node 20.12 ou mais novo.
+Requer Node 22.12 ou mais novo.
 
 ```bash
 npx explicai-mcp <workspace> [--level read|draft|update] [--manual <slug>]... [--allow-dir <pasta>]...

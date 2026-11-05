@@ -14,17 +14,13 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, tipos e testes (Node ${{ matrix.node }})
+    name: Lint, tipos e testes
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [20, 22]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
       # O lockfile traz o `explicai` (peerDependency) do npm.
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
