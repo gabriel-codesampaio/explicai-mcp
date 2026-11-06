@@ -70,7 +70,7 @@ Atenção: `--allow-dir` e a pasta onde o servidor abre entram na lista de leitu
 
 ## Compatibilidade com o explicai
 
-O MCP usa o pacote `explicai` (o core com `explicai/core`) e aceita as versões `>=0.3.0 <2.0.0`. Ao iniciar, ele confere a versão instalada; fora da faixa, não sobe e diz o que fazer:
+O MCP usa o pacote `explicai` (o core com `explicai/core`) e aceita as versões `>=1.0.0 <2.0.0`. Ao iniciar, ele confere a versão instalada; fora da faixa, não sobe e diz o que fazer:
 
 - `explicai` antigo demais: `npm install explicai@latest`.
 - `explicai` mais novo do que o MCP conhece: `npm install explicai-mcp@latest`.

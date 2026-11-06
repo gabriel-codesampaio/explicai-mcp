@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
-/** Faixa de `explicai` que este MCP aceita: do core com `explicai/core` (0.3.0) até antes da 2.0. Mantenha igual ao peerDependencies. */
-export const EXPLICAI_RANGE = ">=0.3.0 <2.0.0";
-const MIN: Version = [0, 3, 0];
+/** Faixa de `explicai` que este MCP aceita: do 1.0.0 (style por item) até antes da 2.0. Mantenha igual ao peerDependencies. */
+export const EXPLICAI_RANGE = ">=1.0.0 <2.0.0";
+const MIN: Version = [1, 0, 0];
 const MAX_EXCLUSIVE = 2;
 
 type Version = [number, number, number];

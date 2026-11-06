@@ -8,7 +8,7 @@ All notable changes to explicai-mcp are listed here, in Portuguese first with a 
 
 ### Adicionado
 
-- Confere a versão do pacote `explicai` ao iniciar (faixa `>=0.3.0 <2.0.0`, igual ao `peerDependencies`). Fora da faixa, o servidor não sobe e a mensagem diz se atualiza o `explicai` ou o `explicai-mcp`.
+- Confere a versão do pacote `explicai` ao iniciar (faixa `>=1.0.0 <2.0.0`, igual ao `peerDependencies`). Fora da faixa, o servidor não sobe e a mensagem diz se atualiza o `explicai` ou o `explicai-mcp`.
 
 ## [0.1.0] - 2026-11-04
 

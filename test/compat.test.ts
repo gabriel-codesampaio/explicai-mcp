@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { assertExplicaiVersion, EXPLICAI_RANGE, installedExplicaiVersion } from "../src/compat.js";
 
 describe("faixa de versão do explicai", () => {
-  it.each(["0.3.0", "0.3.9", "0.9.1", "1.0.0", "1.4.2", "1.0.0-rc.1"])("aceita %s", (v) => {
+  it.each(["1.0.0", "1.0.9", "1.4.2", "1.0.0-rc.1"])("aceita %s", (v) => {
     expect(() => assertExplicaiVersion(v)).not.toThrow();
   });
 
-  it.each(["0.2.1", "0.1.0"])("recusa %s (antigo) e manda atualizar o explicai", (v) => {
+  it.each(["0.9.1", "0.3.0"])("recusa %s (antigo) e manda atualizar o explicai", (v) => {
     expect(() => assertExplicaiVersion(v)).toThrow(/antigo demais.*npm install explicai@latest/);
   });
 
