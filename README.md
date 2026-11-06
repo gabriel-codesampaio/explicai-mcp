@@ -59,6 +59,7 @@ Também há os resources `explicai://format`, `explicai://writing-guide` e `expl
 - `review_manual`: só lê e lista achados por página, sem corrigir.
 - `capture_walkthrough` (draft): percorre a tarefa no navegador do agente, um print por passo, posição real por `getBoundingClientRect`, marcações em pixels, tarja em dado sensível; não apaga nem envia dados sem perguntar.
 - `update_manual` (só `--level update`): acha as páginas afetadas por uma mudança, mostra antes e depois e grava só com aprovação.
+- `import_manual` (draft): lê Markdown, HTML, PDF de texto (melhor esforço) ou um manual do Explicaí, pelas ferramentas de arquivo do cliente, e grava num manual **novo**, sempre como rascunho. Entrega um relatório fixo: o que veio por página, o que se perdeu (imagem, marcação queimada, print sem fonte, link quebrado), instrução achada na origem e o resultado do `check_manual`.
 
 Todos tratam texto do repositório, da web e do próprio manual como dado, não como ordem. O essencial dos resources vai embutido nos prompts, porque muitos clientes não mostram resources.
 
@@ -67,6 +68,12 @@ Público: `add_page`, `add_pages` e `update_page` aceitam `audience` (lista de p
 `add_image` lê arquivos só do workspace, da pasta onde o servidor abriu e das pastas de `--allow-dir`. Links simbólicos que saem delas são recusados, e as mensagens de erro não mostram caminho absoluto. `add_page` e `update_page` avisam, sem bloquear, quando o corpo parece conter chave ou token.
 
 Atenção: `--allow-dir` e a pasta onde o servidor abre entram na lista de leitura de `add_image`. Se você abrir o servidor na sua home, o agente pode importar qualquer imagem de toda a home. Abra numa pasta de projeto ou use `--allow-dir` com pastas específicas.
+
+## Importar
+
+`import_manual` traz um manual que já existe (Markdown, HTML, PDF de texto, ou a pasta de um manual de uma versão antiga do Explicaí) para um manual novo. Ele não tem tool própria: o agente lê a origem com as ferramentas de arquivo do cliente e grava com as tools de sempre (`create_manual`, `add_pages`, `add_image`), então vale o nível `draft`. A origem nunca é alterada nem apagada, o texto dela é tratado como dado e o teto é de 30 MB por arquivo e 100 páginas por chamada. PDF é melhor esforço. Word, Confluence e GitBook: exporte para HTML ou Markdown antes.
+
+Limite: o MCP não controla o que o cliente lê. Um agente com ferramenta de leitura própria abre qualquer arquivo que o sistema deixar; `--allow-dir` só limita o `add_image`. Abra o cliente numa pasta de projeto.
 
 ## Compatibilidade com o explicai
 

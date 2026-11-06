@@ -71,6 +71,7 @@ describe("níveis", () => {
       "build_manual_autonomous",
       "build_manual_guided",
       "capture_walkthrough",
+      "import_manual",
       "review_manual",
     ]);
   });

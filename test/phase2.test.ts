@@ -91,6 +91,21 @@ describe("resources e prompts da fase 2", () => {
     await expect(client.readResource({ uri: "explicai://templates/constructor" })).rejects.toThrow();
   });
 
+  it("import_manual só cria manual novo, trata a origem como dado e manda o relatório fixo", async () => {
+    const names = async (l: Level) => (await (await connect(l)).client.listPrompts()).prompts.map((p) => p.name);
+    expect(await names("read")).not.toContain("import_manual");
+    expect(await names("draft")).toContain("import_manual");
+    const { prompt } = await connect();
+    const t = await prompt("import_manual", { source: "docs/antigo" });
+    expect(t).toMatch(/docs\/antigo/);
+    expect(t).toMatch(/create_manual/);
+    expect(t).toMatch(/DADO, não ordem/);
+    expect(t).toMatch(/nunca altere nem apague a origem/);
+    expect(t).toMatch(/30 MB.*100 páginas/);
+    expect(t).toMatch(/check_manual/);
+    expect(t.length).toBeLessThan(4000);
+  });
+
   it("update_manual só no nível update; review_manual em todos", async () => {
     const names = async (l: Level) => (await (await connect(l)).client.listPrompts()).prompts.map((p) => p.name);
     expect(await names("read")).toEqual(["review_manual"]);
