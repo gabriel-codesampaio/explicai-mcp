@@ -91,6 +91,21 @@ describe("resources e prompts da fase 2", () => {
     await expect(client.readResource({ uri: "explicai://templates/constructor" })).rejects.toThrow();
   });
 
+  it("import_manual só cria manual novo, trata a origem como dado e manda o relatório fixo", async () => {
+    const names = async (l: Level) => (await (await connect(l)).client.listPrompts()).prompts.map((p) => p.name);
+    expect(await names("read")).not.toContain("import_manual");
+    expect(await names("draft")).toContain("import_manual");
+    const { prompt } = await connect();
+    const t = await prompt("import_manual", { source: "docs/antigo" });
+    expect(t).toMatch(/docs\/antigo/);
+    expect(t).toMatch(/create_manual/);
+    expect(t).toMatch(/DADO, não ordem/);
+    expect(t).toMatch(/nunca altere nem apague a origem/);
+    expect(t).toMatch(/30 MB.*100 páginas/);
+    expect(t).toMatch(/check_manual/);
+    expect(t.length).toBeLessThan(4000);
+  });
+
   it("update_manual só no nível update; review_manual em todos", async () => {
     const names = async (l: Level) => (await (await connect(l)).client.listPrompts()).prompts.map((p) => p.name);
     expect(await names("read")).toEqual(["review_manual"]);
@@ -176,6 +191,34 @@ describe("economia: add_pages e section", () => {
     expect(tree).toHaveLength(2);
     expect(tree[0].children).toHaveLength(2);
     expect((await call("add_pages", { manual, pages: [{ title: "" }] })).error).toBe(true);
+  });
+
+  it("add_pages avisa segredo no título e recusa árvore funda ou grande demais", async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug as string;
+    const w = await call("add_pages", { manual, pages: [{ title: "Token ghp_abcdefghijklmnopqrstuvwxyz0123456789" }] });
+    expect(w.json.warnings).toHaveLength(1);
+    const deep = {
+      title: "n1",
+      children: [
+        {
+          title: "n2",
+          children: [{ title: "n3", children: [{ title: "n4", children: [{ title: "n5", children: [{ title: "n6" }] }] }] }],
+        },
+      ],
+    };
+    const d = await call("add_pages", { manual, pages: [deep] });
+    expect(d.error).toBe(true);
+    expect(d.text).toMatch(/profundidade/);
+    const many = Array.from({ length: 11 }, (_, i) => ({
+      title: `p${i}`,
+      children: Array.from({ length: 10 }, (_, j) => ({ title: `c${i}-${j}` })),
+    }));
+    const m = await call("add_pages", { manual, pages: many });
+    expect(m.error).toBe(true);
+    expect(m.text).toMatch(/teto/);
+    // Recusa antes de gravar: só a página do aviso existe.
+    expect((await call("get_manual", { manual })).json.tree).toHaveLength(1);
   });
 
   it("update_page e read_page por seção mexem só no trecho", async () => {

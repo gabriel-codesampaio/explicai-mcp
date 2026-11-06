@@ -6,6 +6,7 @@ import {
   autonomousPrompt,
   FORMAT_GUIDE,
   guidedPrompt,
+  importPrompt,
   reviewPrompt,
   TEMPLATES,
   type TemplateKind,
@@ -124,6 +125,20 @@ export function createServer(cfg: Config): McpServer {
         argsSchema: args,
       },
       (a) => ({ messages: [{ role: "user", content: { type: "text", text: guidedPrompt(a) } }] }),
+    );
+    server.registerPrompt(
+      "import_manual",
+      {
+        title: "Importar manual",
+        description:
+          "O agente lê Markdown, HTML, PDF ou um manual antigo do Explicaí e grava num manual novo, sempre como rascunho.",
+        argsSchema: {
+          source: z.string().describe("Arquivo ou pasta a importar."),
+          title: z.string().optional(),
+          language: z.string().optional().describe("Idioma do texto (padrão pt-BR)."),
+        },
+      },
+      (a) => user(importPrompt(a)),
     );
   }
   return server;

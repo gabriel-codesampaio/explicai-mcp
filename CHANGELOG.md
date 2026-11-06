@@ -6,6 +6,13 @@ All notable changes to explicai-mcp are listed here, in Portuguese first with a 
 
 ## [Unreleased]
 
+### Adicionado
+
+- Confere a versão do pacote `explicai` ao iniciar (faixa `>=1.0.0 <2.0.0`, igual ao `peerDependencies`). Fora da faixa, o servidor não sobe e a mensagem diz se atualiza o `explicai` ou o `explicai-mcp`.
+- `annotate_image` aceita `style` opcional em cada marcador, seta, destaque e área clicável, com enum fechado (cor, tamanho, espessura, preenchimento, borda). `read_page` devolve o `style`; regravar sem `style` não apaga o existente. / `annotate_image` takes an optional closed-enum per-item `style`; `read_page` returns it; rewriting without `style` keeps the existing one.
+- `add_pages` avisa segredo no título, tem teto de 100 páginas, 5 níveis e 400 mil caracteres no total (recusa antes de gravar) e, se falhar no meio, lista as páginas já criadas com os ids. / `add_pages` warns about secrets in titles, caps the tree at 100 pages, 5 levels and 400k characters (refused before writing), and lists already-created pages with ids if it fails midway.
+- Prompt `import_manual`: importa Markdown, HTML, PDF de texto ou um manual antigo do Explicaí para um manual novo, em rascunho, com relatório fixo. / `import_manual` prompt: imports Markdown, HTML, text PDF or an old Explicaí manual into a new manual, as draft, with a fixed report.
+
 ## [0.1.0] - 2026-11-04
 
 Primeira versão publicada. Requer o pacote `explicai` 0.3.0 ou mais novo (o core com `explicai/core`).
