@@ -103,7 +103,7 @@ const SECRET_PATTERNS = [
 export function secretWarning(text: string | undefined): string[] {
   if (text && SECRET_PATTERNS.some((p) => p.test(text))) {
     return [
-      "O corpo parece conter uma chave, token ou senha. Se for real, remova da página (update_page) e troque a credencial: o manual pode ir para o cliente.",
+      "O título ou o corpo parece conter uma chave, token ou senha. Se for real, remova da página (update_page) e troque a credencial: o manual pode ir para o cliente.",
     ];
   }
   return [];

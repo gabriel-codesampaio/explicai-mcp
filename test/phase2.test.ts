@@ -178,6 +178,34 @@ describe("economia: add_pages e section", () => {
     expect((await call("add_pages", { manual, pages: [{ title: "" }] })).error).toBe(true);
   });
 
+  it("add_pages avisa segredo no título e recusa árvore funda ou grande demais", async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug as string;
+    const w = await call("add_pages", { manual, pages: [{ title: "Token ghp_abcdefghijklmnopqrstuvwxyz0123456789" }] });
+    expect(w.json.warnings).toHaveLength(1);
+    const deep = {
+      title: "n1",
+      children: [
+        {
+          title: "n2",
+          children: [{ title: "n3", children: [{ title: "n4", children: [{ title: "n5", children: [{ title: "n6" }] }] }] }],
+        },
+      ],
+    };
+    const d = await call("add_pages", { manual, pages: [deep] });
+    expect(d.error).toBe(true);
+    expect(d.text).toMatch(/profundidade/);
+    const many = Array.from({ length: 11 }, (_, i) => ({
+      title: `p${i}`,
+      children: Array.from({ length: 10 }, (_, j) => ({ title: `c${i}-${j}` })),
+    }));
+    const m = await call("add_pages", { manual, pages: many });
+    expect(m.error).toBe(true);
+    expect(m.text).toMatch(/teto/);
+    // Recusa antes de gravar: só a página do aviso existe.
+    expect((await call("get_manual", { manual })).json.tree).toHaveLength(1);
+  });
+
   it("update_page e read_page por seção mexem só no trecho", async () => {
     const { call } = await connect();
     const manual = (await call("create_manual", { title: "M" })).json.slug as string;
