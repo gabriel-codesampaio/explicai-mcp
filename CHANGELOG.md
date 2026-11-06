@@ -6,6 +6,8 @@ All notable changes to explicai-mcp are listed here, in Portuguese first with a 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-06
+
 ### Adicionado
 
 - Confere a versão do pacote `explicai` ao iniciar (faixa `>=1.0.0 <2.0.0`, igual ao `peerDependencies`). Fora da faixa, o servidor não sobe e a mensagem diz se atualiza o `explicai` ou o `explicai-mcp`.
@@ -30,5 +32,6 @@ Primeira versão publicada. Requer o pacote `explicai` 0.3.0 ou mais novo (o cor
 
 First published release. A stdio MCP server that lets an AI agent build Explicaí manuals: read and check manuals, add pages, import and mark up images, and export to HTML, Markdown or PDF. `--level read|draft|update` and `--manual` narrow what the agent can reach (not a security boundary). The agent never deletes, approves or publishes; everything it writes starts as a draft. Needs `explicai` 0.3.0 or newer.
 
-[Unreleased]: https://github.com/gabriel-codesampaio/explicai-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/gabriel-codesampaio/explicai-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gabriel-codesampaio/explicai-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/gabriel-codesampaio/explicai-mcp/releases/tag/v0.1.0

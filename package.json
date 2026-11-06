@@ -1,6 +1,6 @@
 {
   "name": "explicai-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server so an AI agent can build and export Explicaí manuals. Servidor MCP para o agente de IA montar e exportar manuais do Explicaí.",
   "keywords": [
     "mcp",
