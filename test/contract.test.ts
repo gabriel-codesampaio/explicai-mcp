@@ -235,6 +235,50 @@ describe("add_image", () => {
   });
 });
 
+describe("annotate_image style por item", () => {
+  const setupImg = async () => {
+    const { call } = await connect();
+    const manual = (await call("create_manual", { title: "M" })).json.slug;
+    const img = (await call("add_image", { manual, source: { base64: png().toString("base64"), name: "b.png" } })).json;
+    return { call, manual, asset: img.asset as string, dir: path.join(ws, manual) };
+  };
+
+  it("grava o style de cada tipo, devolve em read_page e regravar sem style não apaga", async () => {
+    const { call, manual, asset, dir } = await setupImg();
+    const page = (await call("add_page", { manual, title: "P", body: `![](../${asset})` })).json;
+    const r = await call("annotate_image", {
+      manual,
+      asset,
+      markers: [{ x: 0.1, y: 0.1, style: { color: "red", size: "l", border: "none" } }],
+      highlights: [{ x: 0.2, y: 0.2, w: 0.3, h: 0.2, style: { color: "pink", fill: "soft", border: "m" } }],
+      arrows: [{ from: { x: 0.1, y: 0.1 }, to: { x: 0.5, y: 0.5 }, style: { stroke: "l" } }],
+      hotspots: [
+        { x: 0, y: 0, w: 0.2, h: 0.2, target: { type: "url", href: "https://a.b" }, style: { fill: "none", border: "none" } },
+      ],
+    });
+    expect(r.error).toBe(false);
+    expect((await call("annotate_image", { manual, asset, markers: [{ x: 0.9, y: 0.9 }] })).error).toBe(false);
+    const a = (await call("read_page", { manual, pageId: page.id })).json.images[0].annotations;
+    expect(a.markers[0].style).toEqual({ color: "red", size: "l", border: "none" });
+    expect(a.markers[1]).not.toHaveProperty("style");
+    expect(a.highlights[0].style).toEqual({ color: "pink", fill: "soft", border: "m" });
+    expect(a.arrows[0].style).toEqual({ stroke: "l" });
+    // Sem preenchimento e sem borda a área sumiria: o core devolve a borda "s".
+    expect(a.hotspots[0].style).toEqual({ fill: "none", border: "s" });
+    expect((await readAnnotations(dir, asset)).markers[0]?.style).toEqual({ color: "red", size: "l", border: "none" });
+  });
+
+  it("enum fechado: valor fora da lista ou cor de outra paleta é recusado", async () => {
+    const { call, manual, asset } = await setupImg();
+    const bad = [
+      { markers: [{ x: 0.1, y: 0.1, style: { color: "#ff0000" } }] },
+      { markers: [{ x: 0.1, y: 0.1, style: { size: "xl" } }] },
+      { highlights: [{ x: 0, y: 0, w: 0.2, h: 0.2, style: { color: "red" } }] },
+    ];
+    for (const b of bad) expect((await call("annotate_image", { manual, asset, ...b })).error).toBe(true);
+  });
+});
+
 describe("annotate_image", () => {
   it("recusa hotspot para página inexistente", async () => {
     const { call } = await connect();

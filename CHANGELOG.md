@@ -9,6 +9,7 @@ All notable changes to explicai-mcp are listed here, in Portuguese first with a 
 ### Adicionado
 
 - Confere a versão do pacote `explicai` ao iniciar (faixa `>=1.0.0 <2.0.0`, igual ao `peerDependencies`). Fora da faixa, o servidor não sobe e a mensagem diz se atualiza o `explicai` ou o `explicai-mcp`.
+- `annotate_image` aceita `style` opcional em cada marcador, seta, destaque e área clicável, com enum fechado (cor, tamanho, espessura, preenchimento, borda). `read_page` devolve o `style`; regravar sem `style` não apaga o existente. / `annotate_image` takes an optional closed-enum per-item `style`; `read_page` returns it; rewriting without `style` keeps the existing one.
 
 ## [0.1.0] - 2026-11-04
 
